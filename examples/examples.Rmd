@@ -1,0 +1,63 @@
+---
+title: "examples"
+output: html_document
+---
+
+```{r setup, include=FALSE, fig.height=10,warnings=FALSE}
+knitr::opts_chunk$set(echo = TRUE,error=TRUE,warnings=FALSE)
+
+plotRes <- function(res){
+  res_trimmed = res[which(rowMeans(res,na.rm = TRUE) >= 0.01 ),]
+  boxplot(t(res_trimmed),xlab="Tissue", ylab="Proportions",main="Estimated proportions",las=2,cex.axis=0.50)
+}
+```
+
+#57 Signature deconvolution of roadmap data
+
+```{r,error=TRUE,warnings=FALSE}
+library(rdmdeconv)
+res <- deconv(epigenomes57.N)
+head(res[,1:6])
+```
+
+#marker extraction based on 4 proportions 
+```{r,error=TRUE,warnings=FALSE}
+#Make signatures based on 4 proportions
+signatures4 = make_signatures(proportions4_fben)
+
+colnames(signatures4)
+
+#Extract markers from signatures
+extracted_markers4 = extract_markers(signatures4)
+extracted_markers4 <- extracted_markers4[extracted_markers4$padj==0,] # get only markers with 0 padj (lowest)
+str(extracted_markers4)
+#Show chosen extracted markers
+head(data.frame(signatures4[extracted_markers4$id,],extracted_markers4$padj),50)
+```
+
+
+#4 signatures decomposition of roadmap data using different methods and extracted markers
+
+```{r,error=TRUE,warnings=FALSE}
+#Deconvolution without markers
+res <- deconv(epigenomes57.N,signatures4)
+plotRes(res)
+
+#Deconvolution with markers lsfit method
+res <- deconv(epigenomes57.N,signatures4,markers=extracted_markers4$id)
+plotRes(res)
+
+#Deconvolution with markers lsfit method
+res <- deconv(epigenomes57.N,signatures4,markers=extracted_markers4$id)
+plotRes(res)
+
+#Deconvolution with markers qprog method
+res <- deconv(epigenomes57.N,signatures4,markers=extracted_markers4$id,method = 'qprog')
+plotRes(res)
+
+#Deconvolution with markers deconf method
+res <- deconv(epigenomes57.N,signatures4,markers=extracted_markers4$id,method = 'deconf')
+plotRes(res)
+
+```
+

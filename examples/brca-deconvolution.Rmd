@@ -1,0 +1,91 @@
+---
+title: "examples"
+output: html_document
+---
+
+```{r setup, include=FALSE, fig.height=10,warnings=FALSE}
+knitr::opts_chunk$set(echo = TRUE,error=TRUE,warnings=FALSE)
+
+plotRes <- function(res){
+  res_trimmed = res[which(rowMeans(res,na.rm = TRUE) >= 0.01 ),]
+  boxplot(t(res_trimmed),xlab="Tissue", ylab="Proportions",main="Estimated proportions (deconf)",las=2,cex.axis=0.50)
+}
+
+library(rdmdeconv)
+```
+
+
+#marker extraction based on default proportions 
+```{r,error=TRUE,warnings=FALSE}
+#Make default signatures
+signatures <- make_signatures()
+
+#Extract markers from signatures
+extracted_markers <- extract_markers(signatures)
+extracted_markers <- extracted_markers[extracted_markers$padj==0,] # get only markers with 0 padj (lowest)
+str(extracted_markers)
+#Show chosen extracted markers
+head(data.frame(signatures[extracted_markers$id,],extracted_markers$padj),10)
+
+```
+
+#BRCA.rnaseq data 
+##setup
+
+```{r,error=TRUE,warnings=FALSE}
+
+if( !require(BiocInstaller) ){
+    # enable Bioconductor repositories
+    # -> add Bioc-software
+    setRepositories() 
+    source("https://bioconductor.org/biocLite.R")
+    biocLite("BiocInstaller")
+    #install.packages('BiocInstaller')
+    library(BiocInstaller)
+}
+
+if (!require(RTCGA.rnaseq)){
+  #biocLite("RTCGA")
+  biocLite("RTCGA.rnaseq")
+  library(RTCGA.rnaseq)
+}
+
+dataset = BRCA.rnaseq[1:10,] #subset of patients
+```
+
+##Map gene names from BRCA to Roadmap format
+```{r,error=TRUE,warnings=FALSE}
+mapped_genes <- map_genes(colnames(dataset))
+without_duplicates = setdiff(1:length(mapped_genes),which(duplicated(mapped_genes))) # remove duplicates from mapped games
+mix = data.frame(t(dataset[,-1])[without_duplicates,]) #remove duplicates from mix
+colnames(mix) <- dataset[,1] #set column names based on first row from 
+rownames(mix) <- mapped_genes[without_duplicates] # set proper rownames without duplicates
+#Filter data (ex. available genes) performed by deconv anyway
+mix <- filter_data(mix,signatures)
+```
+
+##Just test if gene mapping was correctly performed
+```{r,error=TRUE,warnings=FALSE}
+test <- data.frame(colnames(dataset)[without_duplicates],rownames(mix))
+colnames(test) <- c('BRCA','Roadmap')
+
+#Data mapped
+head(test[order(test[2]),],15)
+
+#Gene info
+selgi <- gene_info[gene_info$V1 %in% rownames(mix),]
+head(selgi[order(selgi$V1),],15)
+```
+
+##57 Signature deconvolution of BRCA.rnaseq data using extracted markers 
+```{r, fig.height=10,error=TRUE,warnings=FALSE}
+
+#Filter data (ex. available genes) performed by deconv anyway
+mix <- filter_data(mix,signatures)
+
+#Deconvolution
+res <- deconv(mix,signatures,markers=extracted_markers$id)
+head(res[,1:6])
+plotRes(res)
+
+```

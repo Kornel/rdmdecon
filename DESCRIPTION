@@ -1,0 +1,14 @@
+Package: rdmdeconv
+Type: Package
+Title: Deconvolution based on Roadmap data
+Version: 0.1.0
+Author: Piotr Sobecki
+Maintainer: Who to complain to <ptrsbck@gmail.com>
+Description: More about what it does (maybe more than one line)
+License: What license is it under?
+LazyData: TRUE
+Imports:
+    BiocInstaller,
+    CellMix,
+    dplyr,
+    DESeq
