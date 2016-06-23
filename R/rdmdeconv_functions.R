@@ -64,7 +64,14 @@ make_signatures <- function(proportions=proportions57,all_samples=epigenomes57.N
   all_samples = all_samples[,which(colSums(all_samples,na.rm = TRUE) != 0 )]
 
   rownames(signatures) = rownames(all_samples)
-  (signatures)
+  (filter_empty_data(signatures))
+}
+
+normalize_data_by_columns <- function(inp){
+  out <- sapply(colnames(inp),function(cname){(inp[,cname]-min(inp[,cname]))/(max(inp[,cname])-min(inp[,cname]))})
+  colnames(out) <- colnames(inp)
+  rownames(out) <- rownames(inp)
+  (out)
 }
 
 extract_markers <- function(signatures=make_signatures()){
@@ -76,11 +83,25 @@ extract_markers <- function(signatures=make_signatures()){
   fit0 <- fitNbinomGLMs( cds, count ~ 1 )
   pvals <- nbinomGLMTest( fit1, fit0 )
   padj <- p.adjust( pvals, "BH" )
-  markers_df = data.frame(rownames(signatures),padj,pvals)
+  
+  markers <- signatures / rowSums(signatures)
+  markers <- normalize_data_by_columns(filter_empty_data(markers))
+  max_row <- apply(markers,1,max)
+  which_max_row <-apply(markers,1,which.max)
+  max_signatures_row <- apply(signatures,1,max)
+  markers_df <- data.frame(rownames(signatures),
+                           padj,
+                           pvals,
+                           max_row,
+                           colnames(signatures)[which_max_row],
+                           max_signatures_row)
+  
   markers_df = markers_df[!is.na(markers_df$pvals),]
-  colnames(markers_df) <- c("id","pvals","padj")
+  
+  colnames(markers_df) <- c("id","pvals","padj",'max','sig','sigval')
   (markers_df)
 }
+
 
 map_genes <- function(input){
   (sapply(strsplit(input,"\\|"),function(gn){as.character(gene_info[which(gene_info$V7==gn[1]),]$V1)}))

@@ -1,0 +1,34 @@
+---
+title: "examples"
+output: html_document
+---
+
+```{r setup, include=FALSE, fig.height=10,warnings=FALSE}
+knitr::opts_chunk$set(echo = TRUE,error=TRUE,warnings=FALSE)
+
+plotRes <- function(res){
+  res_trimmed = res[which(rowMeans(res,na.rm = TRUE) >= 0.01 ),]
+  boxplot(t(res_trimmed),xlab="Tissue", ylab="Proportions",main="Estimated proportions",las=2,cex.axis=0.50)
+}
+```
+
+```{r,error=TRUE,warnings=FALSE}
+library(rdmdeconv)
+#Make signatures based on 4 proportions
+signatures4 = make_signatures(proportions4_fben)
+
+markers_df <- extract_markers2(signatures4)
+
+markers_df_1 = markers_df[markers_df$Max==1,]
+markers_df_1 = markers_df_1[order(markers_df_1$Value),]
+
+head(markers_df)
+
+
+
+#Deconvolution with markers lsfit method
+res <- deconv(epigenomes57.N,signatures4,markers=markers_df_1$id)
+plotRes(res)
+
+
+```

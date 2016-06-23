@@ -1,5 +1,0 @@
-	E054	E055	E056	E061	E062	E122
-mix_fibroblasts	0	1	1	0	0	0
-mix_blood	0	0	0	1	1	0
-mix_endothelial	0	0	0	0	0	1
-mix_nerves	1	0	0	0	0	0

@@ -1,0 +1,77 @@
+---
+title: "examples"
+output: html_document
+---
+
+```{r setup, include=FALSE, fig.height=10,warnings=FALSE}
+knitr::opts_chunk$set(echo = TRUE,error=TRUE,warnings=FALSE)
+library(rdmdeconv)
+```
+
+
+#BRCA.rnaseq data 
+##setup
+
+```{r,error=TRUE,warnings=FALSE}
+
+if( !require(BiocInstaller) ){
+    # enable Bioconductor repositories
+    # -> add Bioc-software
+    setRepositories() 
+    source("https://bioconductor.org/biocLite.R")
+    biocLite("BiocInstaller")
+    #install.packages('BiocInstaller')
+    library(BiocInstaller)
+}
+
+if (!require(RTCGA.rnaseq)){
+  #biocLite("RTCGA")
+  biocLite("RTCGA.rnaseq")
+  library(RTCGA.rnaseq)
+}
+
+```
+
+#Normalize
+```{r}
+nmul = 1000000
+#Make signatures and normalize to 0..1
+nsignatures <- normalize_data_by_columns(make_signatures())
+
+#Make mix data from BRCA and normaize to 0..1
+mix <-map_genes_brca(BRCA.rnaseq[1:10,],nsignatures)
+nmix <- normalize_data_by_columns(mix)
+
+#Multiply by val and round because deconvolution performs values >1
+nmix = round(nmix * nmul);
+nsignatures = round(nsignatures * nmul);
+
+#Clear data
+nsignatures <- filter_data(nsignatures,nmix)
+
+#Order by rownames
+nmix <- nmix[order(rownames(nmix)),]
+nsignatures <- nsignatures[order(rownames(nsignatures)),]
+
+#Extract markers
+xmarkers <- extract_markers(nsignatures)
+sel_xmarkers <- xmarkers[xmarkers$padj<=10^-2& xmarkers$max>=0.9,]
+
+#Perform deconvolution
+res <- deconv(nmix,nsignatures,markers=sel_xmarkers$id)
+plotRes(res)
+
+#Show selected markers for breast
+breastMarkers = sel_xmarkers[sel_xmarkers$sig==c('Breast_Myoepithelial_Cells','Breast_vHMEC'),]
+
+ref <- data.frame(
+          breastMarkers$id,
+          apply(nmix[breastMarkers$id,],1,max),
+          apply(nmix[breastMarkers$id,],1,min),
+          apply(nmix[breastMarkers$id,],1,mean))
+
+colnames(ref) <- c('Gene','Max','Min','Mean')
+ref
+
+nsignatures[breastMarkers$id,c('Breast_Myoepithelial_Cells','Breast_vHMEC')]
+```
