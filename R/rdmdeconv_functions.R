@@ -118,11 +118,36 @@ filter_data <- function(input,signatures){
 
 
 deconv <- function(mix, signatures=make_signatures(), markers= rownames(signatures), method='lsfit'){
-  .setupCellMix()
-  mix <- filter_data(mix,signatures)
-  signatures <- filter_data(signatures,mix)
-  markers <- intersect(markers,rownames(signatures))
-  gse <- ExpressionMix(data.matrix(mix))
-  res <- ged(gse, signatures,subset=markers,method)
-  (coef(res))
+  if (method=='deconRNASeq'){
+    (deconv_deconrnaseq(mix,signatures,markers))
+  } else{
+    .setupCellMix()
+    mix <- filter_data(mix,signatures)
+    signatures <- filter_data(signatures,mix)
+    markers <- intersect(markers,rownames(signatures))
+    gse <- ExpressionMix(data.matrix(mix))
+    res <- ged(gse, signatures,subset=markers,method)
+    (coef(res))    
+  }
 }
+
+deconv_deconrnaseq <- function(mix, signatures=make_signatures(), markers= rownames(signatures)) {
+  if( !require(DeconRNASeq) ){
+    .setupBiocLite()
+    biocLite("DeconRNASeq")
+    library(DeconRNASeq)
+  }
+  mmix <- mix[markers,]
+  msignatures <- signatures[markers,]
+  res <- DeconRNASeq(mmix,
+                     as.data.frame(msignatures),
+                     proportions = NULL,
+                     checksig=TRUE,
+                     known.prop = FALSE,
+                     use.scale = TRUE,
+                     fig = TRUE)
+  resall <- res$out.all
+  rownames(resall) <- colnames(mix)
+  (t(resall))
+}
+
