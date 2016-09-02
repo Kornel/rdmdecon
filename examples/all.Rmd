@@ -37,6 +37,8 @@ if (!require(RTCGA.rnaseq)){
 
 dfs <- list('ACC.rnaseq', 'BLCA.rnaseq', 'BRCA.rnaseq', 'CESC.rnaseq', 'CHOL.rnaseq', 'COAD.rnaseq','DLBC.rnaseq','ESCA.rnaseq','GBM.rnaseq','HNSC.rnaseq','KICH.rnaseq','KIPAN.rnaseq','KIRC.rnaseq','KIRP.rnaseq','LAML.rnaseq','LGG.rnaseq','LIHC.rnaseq','LUAD.rnaseq','LUSC.rnaseq','OV.rnaseq','PAAD.rnaseq','PCPG.rnaseq','PRAD.rnaseq','READ.rnaseq','SKCM.rnaseq','STES.rnaseq','TGCT.rnaseq','THCA.rnaseq','THYM.rnaseq','UCEC.rnaseq','UCS.rnaseq','UVM.rnaseq')
 
+library(reshape2)
+
 for (df in dfs) {
   
   print(df)
@@ -74,9 +76,18 @@ for (df in dfs) {
   
 
   #Perform deconvolution
-  res <- deconv(nmix,nsignatures,markers=sel_xmarkers$id)
+  res <- deconv(nmix,nsignatures,markers=sel_xmarkers$id, method = 'deconRNASeq')
+    
+  res <- t(res)
+    
+  res <- melt(res, varnames = c('barcode', 'tissue'))
+    
+  tissue.order <- tapply(res$value, res$tissue, function(x) -median(x))
+  unique.names <- unique(names(tissue.order[order(tissue.order)]))
+    
+  res$tissue.ordered <- factor(df$tissue, levels = unique.names, ordered = T)
   
-  save(file = paste0(df, '-lsfit.RData'), res)
+  save(file = paste0(res, '-deconRNASeq.RData'), res)
   
   print('done')
 }
