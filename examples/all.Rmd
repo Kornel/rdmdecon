@@ -1,0 +1,83 @@
+---
+title: "examples"
+output: html_document
+---
+
+```{r setup, include=FALSE, fig.height=10,warnings=FALSE}
+knitr::opts_chunk$set(echo = TRUE,error=TRUE,warnings=FALSE)
+library(rdmdeconv)
+```
+
+
+#BRCA.rnaseq data - deconvolution for 2 signatures - breast / other (custom proportions)
+##setup
+
+```{r,error=TRUE,warnings=FALSE}
+
+if( !require(BiocInstaller) ){
+    # enable Bioconductor repositories
+    # -> add Bioc-software
+    setRepositories() 
+    source("https://bioconductor.org/biocLite.R")
+    biocLite("BiocInstaller")
+    #install.packages('BiocInstaller')
+    library(BiocInstaller)
+}
+
+if (!require(RTCGA.rnaseq)){
+  #biocLite("RTCGA")
+  biocLite("RTCGA.rnaseq")
+  library(RTCGA.rnaseq)
+}
+
+```
+
+#Normalize
+```{r}
+
+dfs <- list('ACC.rnaseq', 'BLCA.rnaseq', 'BRCA.rnaseq', 'CESC.rnaseq', 'CHOL.rnaseq', 'COAD.rnaseq','DLBC.rnaseq','ESCA.rnaseq','GBM.rnaseq','HNSC.rnaseq','KICH.rnaseq','KIPAN.rnaseq','KIRC.rnaseq','KIRP.rnaseq','LAML.rnaseq','LGG.rnaseq','LIHC.rnaseq','LUAD.rnaseq','LUSC.rnaseq','OV.rnaseq','PAAD.rnaseq','PCPG.rnaseq','PRAD.rnaseq','READ.rnaseq','SKCM.rnaseq','STES.rnaseq','TGCT.rnaseq','THCA.rnaseq','THYM.rnaseq','UCEC.rnaseq','UCS.rnaseq','UVM.rnaseq')
+
+for (df in dfs) {
+  
+  print(df)
+  
+  proportions <- read.delim('raw/all_proportions_57epigenomes.txt', sep = '\t',row.names=1)
+  
+  nmul = 1000000
+  #Make signatures and normalize to 0..1
+  nsignatures <- normalize_data_by_columns(make_signatures(proportions))
+  
+  data <- get(df)
+  
+  #Make mix data from BRCA and normaize to 0..1
+  mix <- map_genes_brca(data[1:100,],nsignatures)
+  nmix <- normalize_data_by_columns(mix)
+  
+  #Multiply by val and round because deconvolution performs values >1
+  nmix = round(nmix * nmul);
+  nsignatures = round(nsignatures * nmul);
+  
+  #Clear data
+  nsignatures <- filter_data(nsignatures,nmix)
+  
+  #Order by rownames
+  nmix <- nmix[order(rownames(nmix)),]
+  nsignatures <- nsignatures[order(rownames(nsignatures)),]
+  
+  #Extract markers
+  xmarkers <- extract_markers(nsignatures)
+  sel_xmarkers <- xmarkers[xmarkers$padj<=10^-2& xmarkers$max>=0.95,]
+  
+  
+  #Show selected markers for breast
+  breastMarkers = sel_xmarkers[sel_xmarkers$sig=='Breast',]
+  
+
+  #Perform deconvolution
+  res <- deconv(nmix,nsignatures,markers=sel_xmarkers$id)
+  
+  save(file = paste0(df, '-lsfit.RData'), res)
+  
+  print('done')
+}
+```
